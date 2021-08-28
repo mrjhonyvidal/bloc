@@ -42,10 +42,18 @@ typedef EventHandler<Event, State> = FutureOr<void> Function(
   Emitter<State>,
 );
 
-/// Signature for a function which converts an incoming event
+/// Signature for a function which maps an incoming event
 /// into an outbound stream of events.
 /// Used when defining custom [EventTransform]s.
 typedef EventMapper<Event> = Stream<Event> Function(Event);
+
+/// Signature for a function which converts a Stream of incoming events
+/// into a new stream of events.
+///
+/// See also:
+/// * [debounce]
+/// * [throttle]
+typedef EventConverter<Event> = Stream<Event> Function(Stream<Event>);
 
 /// {@template event_transform}
 /// Used to change how events are processed.
@@ -53,9 +61,9 @@ typedef EventMapper<Event> = Stream<Event> Function(Event);
 ///
 /// See also:
 /// * [concurrent]
+/// * [enqueue]
 /// * [restartable]
 /// * [drop]
-/// * [enqueue]
 /// {@endtemplate}
 typedef EventTransform<Event> = Stream<Event> Function(
   Stream<Event>,
@@ -93,6 +101,14 @@ EventTransform<Event> restartable<Event>() {
 /// Dropped events never trigger the event handler.
 EventTransform<Event> drop<Event>() {
   return (events, mapper) => events.exhaustMap(mapper);
+}
+
+EventConverter<Event> debounce<Event>(Duration duration) {
+  return (events) => events.debounce(duration);
+}
+
+EventConverter<Event> throttle<Event>(Duration duration) {
+  return (events) => events.throttle(duration);
 }
 
 class _Emitter<State> implements Emitter<State> {
@@ -500,12 +516,30 @@ abstract class BlocBase<State> {
   }
 }
 
+extension BlocStreamTransformers<T> on EventConverter<T> {
+  EventTransform<T> concurrent() {
+    return (events, mapper) => this.call(events).concurrentAsyncExpand(mapper);
+  }
+
+  EventTransform<T> enqueue() {
+    return (events, mapper) => this.call(events).asyncExpand(mapper);
+  }
+
+  EventTransform<T> restartable() {
+    return (events, mapper) => this.call(events).switchMap(mapper);
+  }
+
+  EventTransform<T> drop() {
+    return (events, mapper) => this.call(events).exhaustMap(mapper);
+  }
+}
+
 extension _StreamX<T> on Stream<T> {
   Stream<T> onCancel(void Function() onCancel) {
     return transform(_OnCancelStreamTransformer(onCancel));
   }
 
-  Stream<T> exhaustMap(EventMapper<T> mapper) {
+  Stream<T> exhaustMap(Stream<T> Function(T) mapper) {
     return transform(_ExhaustMapStreamTransformer(mapper));
   }
 }

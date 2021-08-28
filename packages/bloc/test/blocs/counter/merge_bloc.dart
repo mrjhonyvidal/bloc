@@ -1,14 +1,13 @@
-import 'dart:async';
-
 import 'package:bloc/bloc.dart';
 import 'package:stream_transform/stream_transform.dart';
 
 import '../blocs.dart';
 
 EventTransform<CounterEvent> customTransform() {
-  return (Stream<CounterEvent> events, EventMapper<CounterEvent> mapper) {
-    final nonDebounceStream =
-        events.where((event) => event != CounterEvent.increment);
+  return (events, mapper) {
+    final nonDebounceStream = events.where(
+      (event) => event != CounterEvent.increment,
+    );
 
     final debounceStream = events
         .where((event) => event == CounterEvent.increment)

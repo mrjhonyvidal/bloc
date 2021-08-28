@@ -41,9 +41,9 @@ class SimpleBlocObserver extends BlocObserver {
 }
 
 void main() {
-  Bloc.observer = SimpleBlocObserver();
+  // Bloc.observer = SimpleBlocObserver();
 
-  cubitMain();
+  // cubitMain();
   blocMain();
 }
 
@@ -70,20 +70,26 @@ void blocMain() async {
   print('----------BLOC----------');
 
   /// Create a `CounterBloc` instance.
-  final bloc = CounterBloc();
+  final bloc = CounterBloc()
+    ..stream.listen(print)
+    ..add(CounterEvent.increment)
+    ..add(CounterEvent.increment)
+    ..add(CounterEvent.increment);
 
-  /// Access the state of the `bloc` via `state`.
-  print(bloc.state);
+  // /// Access the state of the `bloc` via `state`.
+  // print(bloc.state);
 
-  /// Interact with the `bloc` to trigger `state` changes.
-  bloc.add(CounterEvent.increment);
+  // /// Interact with the `bloc` to trigger `state` changes.
+  // bloc.add(CounterEvent.increment);
 
-  /// Wait for next iteration of the event-loop
-  /// to ensure event has been processed.
-  await Future<void>.delayed(Duration.zero);
+  // /// Wait for next iteration of the event-loop
+  // /// to ensure event has been processed.
+  // await Future<void>.delayed(Duration.zero);
 
-  /// Access the new `state`.
-  print(bloc.state);
+  // /// Access the new `state`.
+  // print(bloc.state);
+
+  await Future<void>.delayed(const Duration(seconds: 2));
 
   /// Close the `bloc` when it is no longer needed.
   await bloc.close();
@@ -103,20 +109,27 @@ class CounterCubit extends Cubit<int> {
 /// The events which `CounterBloc` will react to.
 enum CounterEvent { increment }
 
+const delay = Duration(seconds: 1);
+
 /// A `CounterBloc` which handles converting `CounterEvent`s into `int`s.
 class CounterBloc extends Bloc<CounterEvent, int> {
   /// The initial state of the `CounterBloc` is 0.
   CounterBloc() : super(0) {
-    on<CounterEvent>(_onCounterEvent);
+    on<CounterEvent>(
+      _onCounterEvent,
+      transform: debounce<CounterEvent>(delay).enqueue(),
+    );
   }
 
-  void _onCounterEvent(CounterEvent event, Emitter<int> emit) {
+  Future<void> _onCounterEvent(CounterEvent event, Emitter<int> emit) async {
+    print('_onCounterEvent');
     switch (event) {
 
       /// When a `CounterEvent.increment` event is added,
       /// the current `state` of the bloc is accessed via the `state` property
       /// and a new state is emitted via `emit`.
       case CounterEvent.increment:
+        await Future<void>.delayed(const Duration(seconds: 1));
         return emit(state + 1);
     }
   }
